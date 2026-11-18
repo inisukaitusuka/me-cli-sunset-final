@@ -1,0 +1,102 @@
+from html.parser import HTMLParser
+import os
+import re
+import textwrap
+
+_clear_hook = None
+_pause_hook = None
+
+def set_Hooks(clear_fn=None, pause_fn=None):
+    global _clear_hook, _pause_hook
+    _clear_hook = clear_fn
+    _pause_hook = pause_fn
+
+def clear_screen():
+    if _clear_hook is not None:
+        if _clear_hook():
+            return
+    print("Clearing screen...")
+    os.system('cls' if os.name == 'nt' else 'clear')
+    ascii_art = r"""
+            _____                    _____          
+           /\    \                  /\    \         
+          /::\____\                /::\    \        
+         /::::|   |               /::::\    \       
+        /:::::|   |              /::::::\    \      
+       /::::::|   |             /:::/\:::\    \     
+      /:::/|::|   |            /:::/__\:::\    \    
+     /:::/ |::|   |           /::::\   \:::\    \   
+    /:::/  |::|___|______    /::::::\   \:::\    \  
+   /:::/   |::::::::\    \  /:::/\:::\   \:::\    \ 
+  /:::/    |:::::::::\____\/:::/__\:::\   \:::\____\
+  \::/    / ~~~~~/:::/    /\:::\   \:::\   \::/    /
+   \/____/      /:::/    /  \:::\   \:::\   \/____/ 
+               /:::/    /    \:::\   \:::\    \     
+              /:::/    /      \:::\   \:::\____\    
+             /:::/    /        \:::\   \::/    /    
+            /:::/    /          \:::\   \/____/     
+           /:::/    /            \:::\    \         
+          /:::/    /              \:::\____\        
+          \::/    /                \::/    /        
+           \/____/                  \/____/         
+"""
+
+    print(ascii_art)
+
+def pause():
+    if _pause_hook is not None:
+        if _pause_hook():
+            return
+    input("\nPress enter to continue...")
+
+class HTMLToText(HTMLParser):
+    def __init__(self, width=80):
+        super().__init__()
+        self.width = width
+        self.result = []
+        self.in_li = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "li":
+            self.in_li = True
+        elif tag == "br":
+            self.result.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag == "li":
+            self.in_li = False
+            self.result.append("\n")
+
+    def handle_data(self, data):
+        text = data.strip()
+        if text:
+            if self.in_li:
+                self.result.append(f"- {text}")
+            else:
+                self.result.append(text)
+
+    def get_text(self):
+        # Join and clean multiple newlines
+        text = "".join(self.result)
+        text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+        # Wrap lines nicely
+        return "\n".join(textwrap.wrap(text, width=self.width, replace_whitespace=False))
+
+def display_html(html_text, width=80):
+    parser = HTMLToText(width=width)
+    parser.feed(html_text)
+    return parser.get_text()
+
+def format_quota_byte(quota_byte: int) -> str:
+    GB = 1024 ** 3 
+    MB = 1024 ** 2
+    KB = 1024
+
+    if quota_byte >= GB:
+        return f"{quota_byte / GB:.2f} GB"
+    elif quota_byte >= MB:
+        return f"{quota_byte / MB:.2f} MB"
+    elif quota_byte >= KB:
+        return f"{quota_byte / KB:.2f} KB"
+    else:
+        return f"{quota_byte} B"
